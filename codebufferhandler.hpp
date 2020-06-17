@@ -11,6 +11,7 @@
 class CodeBufferHandler {
     CodeBuffer& cb_inst;
     string typeConvert(const string& type_str);
+    string opConvert(const string& op_str);
 public :
     CodeBufferHandler();
     void emitPrintFunctions();
@@ -20,6 +21,8 @@ public :
     void emitFunctionEnd();
     void emitVariableDecl(Basictype* type,Basictype* id);
     void ifStart(Basictype* exp);
+    void elseStart(Basictype* exp);
+    void expReleq(Basictype* ret,Basictype* exp_l,Basictype* op,Basictype* exp_r);
 };
 
 

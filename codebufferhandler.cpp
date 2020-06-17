@@ -65,3 +65,20 @@ void CodeBufferHandler::ifStart(Basictype *exp) {
     cb_inst.bpatch(exp->getTrueList(),lb);
 }
 
+void CodeBufferHandler::elseStart(Basictype *exp) {
+    string lb = cb_inst.genLabel();
+    cb_inst.bpatch(exp->getFalseList(),lb);
+}
+
+void CodeBufferHandler::expReleq(Basictype *ret, Basictype *exp_l,
+                                    Basictype* op,Basictype *exp_r) {
+    string s = "if %" + exp_l->getLexeme() + opConvert(op->getLexeme()) +" %" + exp_r->getLexeme();
+    s += "goto label @, label @";
+    int ln = cb_inst.emit(s);
+    ret->makeList(true,pair<int,BranchLabelIndex>(ln,FIRST));
+    ret->makeList(false,pair<int,BranchLabelIndex>(ln,SECOND));
+}
+
+string CodeBufferHandler::opConvert(const string& op_str){
+    return "3";
+}

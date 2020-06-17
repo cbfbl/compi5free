@@ -17,6 +17,7 @@ class Basictype {
     int global_offset;
     int local_offset;
     string type;
+    string reg;
     vector<pair<int,BranchLabelIndex>> falselist;
     vector<pair<int,BranchLabelIndex>> truelist;
 
@@ -42,6 +43,10 @@ public:
     vector<pair<int,BranchLabelIndex>>& getTrueList();
 
     vector<pair<int,BranchLabelIndex>>& getFalseList();
+
+    void mergeList(bool which_list,vector<pair<int,BranchLabelIndex>>& lst);
+
+    void makeList(bool which_list,pair<int,BranchLabelIndex> item);
 };
 
 class Num : public Basictype {

@@ -38,6 +38,25 @@ vector<pair<int, BranchLabelIndex>> &Basictype::getFalseList() {
     return falselist;
 }
 
+void Basictype::mergeList(bool which_list,vector<pair<int,BranchLabelIndex>>& lst) {
+    if (which_list){
+        truelist = CodeBuffer::merge(truelist,lst);
+    }
+    else {
+        falselist = CodeBuffer::merge(falselist,lst);
+    }
+
+}
+
+void Basictype::makeList(bool which_list, pair<int, BranchLabelIndex> item) {
+    if (which_list){
+        truelist = CodeBuffer::makelist(item);
+    }
+    else {
+        falselist = CodeBuffer::makelist(item);
+    }
+}
+
 Num::Num(const char *yytext)
         : Basictype(yytext), lexeme_value(std::stoi(string(yytext))) {
     this->setType("INT OR BYTE");
