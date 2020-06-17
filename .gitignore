@@ -1,0 +1,11 @@
+hw5.pdf
+hw5-tests.zip
+selfcheck-hw5
+makefile
+.idea
+/tests
+CMakeLists.txt
+lex.yy.c
+/cmake-build-debug
+parser.tab.cpp
+parser.tab.hpp

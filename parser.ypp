@@ -1,0 +1,242 @@
+%{
+	#include <iostream>
+	#include <stdlib.h>
+    #include <string>
+    #include <vector>
+
+    #include "types.hpp"
+	#include "hw3_output.hpp"
+    #include "handler.hpp"
+	extern int yylex();
+	extern int yylineno;
+    Handler handler;
+	int yyerror(const char * message);
+%}
+
+%token BOOL
+%token VOID INT BYTE B TRUE FALSE RETURN WHILE IF
+%token BREAK CONTINUE SC COMMA LPAREN RPAREN LBRACE RBRACE
+%token  ID NUM STRING
+%right ASSIGN
+%left OR
+%left AND
+%left RELEQ
+%nonassoc RELOP
+%left BINOPL
+%left BINOPH
+%right NOT
+%nonassoc THEN
+%nonassoc ELSE
+
+
+%%
+
+Program	: {handler.initialize();} Funcs 								{
+    handler.handleRule(1,vector<Basictype*>());
+};
+Funcs : /*epsilon*/ 													{
+    handler.handleRule(2,vector<Basictype*>());
+};
+Funcs : FuncDecl Funcs 													{
+    handler.handleRule(3,vector<Basictype*>());
+};
+FuncDecl : RetType ID LPAREN {
+    handler.insertScope();
+    handler.setExpectedRetType($1->getType());
+    handler.checkDefined($2);
+} Formals { handler.declArgs($1,$2,$5); } RPAREN LBRACE Statements RBRACE 	{
+    vector<Basictype*> vec{$1,$2,$5};
+    handler.handleRule(4,vec);
+};
+RetType : Type															{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(5,vec);
+};
+RetType : VOID 															{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(6,vec);
+};
+Formals : /*epsilon*/ 													{
+    $$=handler.handleRule(7,vector<Basictype*>());
+};
+Formals : FormalsList 												    {
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(8,vec);
+};
+FormalsList : FormalDecl 												{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(9,vec);
+};
+FormalsList : FormalDecl COMMA FormalsList 								{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(10,vec);
+};
+FormalDecl : Type ID 													{
+    vector<Basictype*> vec{$1,$2};
+    $$ = handler.handleRule(11,vec);
+};
+Statements : Statement 													{handler.handleRule(12,vector<Basictype*>());};
+Statements : Statements Statement 										{handler.handleRule(13,vector<Basictype*>());};
+Statement : LBRACE {
+    handler.insertScope();
+} Statements RBRACE 			{
+    handler.handleRule(14,vector<Basictype*>());
+};
+Statement : Type ID SC 													{
+    vector<Basictype*> vec{$1,$2};
+    handler.handleRule(15,vec);
+};
+Statement : Type ID ASSIGN Exp SC										{
+    vector<Basictype*> vec{$1,$2,$4};
+    handler.handleRule(16,vec);
+};
+Statement : ID ASSIGN Exp SC 											{
+    vector<Basictype*> vec{$1,$3};
+    $$ = handler.handleRule(17,vec);
+};
+Statement : Call SC 													{handler.handleRule(18,vector<Basictype*>());};
+Statement : RETURN SC													{
+    handler.handleRule(19,vector<Basictype*>());
+};
+Statement : RETURN Exp SC												{
+    vector<Basictype*> vec{$2};
+    handler.handleRule(20,vec);
+};
+Statement : IFSTART %prec THEN					                        {handler.handleRule(21,vector<Basictype*>());};
+Statement : IFSTART ELSE {
+    handler.insertScope();
+} Statement			    {
+    handler.removeScope();
+    handler.handleRule(22,vector<Basictype*>());
+};
+Statement : WHILESTART %prec THEN				                        {
+    handler.handleRule(23,vector<Basictype*>());
+};
+Statement : WHILESTART ELSE {
+    handler.insertScope();
+    handler.handleRule(24,vector<Basictype*>());
+} Statement			{
+    handler.removeScope();
+};
+Statement : BREAK SC 													{
+    vector<Basictype*> vec{$1};
+    handler.handleRule(25,vec);
+};
+Statement : CONTINUE SC 												{
+    vector<Basictype*> vec{$1};
+    handler.handleRule(26,vec);
+};
+Call : ID LPAREN ExpList RPAREN											{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(27,vec);
+};
+Call : ID LPAREN RPAREN													{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(28,vec);
+};
+ExpList : Exp															{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(29,vec);
+};
+ExpList : Exp COMMA ExpList												{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(30,vec);
+};
+Type : INT																{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(31,vec);
+};
+Type : BYTE																{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(32,vec);
+};
+Type : BOOL															    {
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(33,vec);
+};
+Exp : LPAREN Exp RPAREN													{
+    vector<Basictype*> vec{$2};
+    $$=handler.handleRule(34,vec);
+};
+Exp : Exp BINOPH Exp 													{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(35,vec);
+};
+Exp : Exp BINOPL Exp													{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(36,vec);
+};
+Exp : ID																{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(37,vec);
+};
+Exp : Call																{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(38,vec);
+};
+Exp : NUM																{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(39,vec);
+};
+Exp : NUM B																{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(40,vec);
+};
+Exp : STRING															{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(41,vec);
+};
+Exp : TRUE																{
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(42,vec);
+};
+Exp : FALSE															    {
+    vector<Basictype*> vec{$1};
+    $$=handler.handleRule(43,vec);
+};
+Exp : NOT Exp															{
+    vector<Basictype*> vec{$2};
+    $$=handler.handleRule(44,vec);
+};
+Exp : Exp AND Exp													    {
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(45,vec);
+};
+Exp : Exp OR Exp 														{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(46,vec);
+};
+Exp : Exp RELOP Exp														{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(47,vec);
+};
+Exp : Exp RELEQ Exp														{
+    vector<Basictype*> vec{$1,$3};
+    $$=handler.handleRule(48,vec);
+};
+IFSTART : IF LPAREN Exp {
+    vector<Basictype*> vec{$3};
+    handler.handleRule(49,vec);
+    handler.insertScope();
+} RPAREN Statement {
+    handler.removeScope();
+}
+WHILESTART : WHILE LPAREN Exp {
+    vector<Basictype*> vec{$3};
+    handler.handleRule(50,vec);
+    handler.insertScope();
+} RPAREN Statement {
+    handler.removeScope();
+}
+%%
+
+int main()
+{
+	yyparse();
+}
+
+int yyerror(const char * message)
+{
+	output::errorSyn(yylineno);
+	exit(0);
+}
