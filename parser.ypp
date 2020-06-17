@@ -7,9 +7,11 @@
     #include "types.hpp"
 	#include "hw3_output.hpp"
     #include "handler.hpp"
+    #include "codebufferhandler.hpp"
 	extern int yylex();
 	extern int yylineno;
     Handler handler;
+    CodeBufferHandler cb_handler;
 	int yyerror(const char * message);
 %}
 
@@ -31,22 +33,30 @@
 
 %%
 
-Program	: {handler.initialize();} Funcs 								{
+Program	: {
+    handler.initialize();
+    cb_handler.emitPrintFunctions();
+} Funcs {
     handler.handleRule(1,vector<Basictype*>());
+    cb_handler.printGlobalBuffer();
+    cb_handler.printLocalBuffer();
 };
-Funcs : /*epsilon*/ 													{
+Funcs : /*epsilon*/ {
     handler.handleRule(2,vector<Basictype*>());
 };
-Funcs : FuncDecl Funcs 													{
+Funcs : FuncDecl Funcs 	{
     handler.handleRule(3,vector<Basictype*>());
 };
 FuncDecl : RetType ID LPAREN {
     handler.insertScope();
     handler.setExpectedRetType($1->getType());
     handler.checkDefined($2);
-} Formals { handler.declArgs($1,$2,$5); } RPAREN LBRACE Statements RBRACE 	{
+} Formals {
+    cb_handler.emitFunctionStart($1,$2,$5);
+} RPAREN LBRACE Statements RBRACE 	{
     vector<Basictype*> vec{$1,$2,$5};
     handler.handleRule(4,vec);
+    cb_handler.emitFunctionEnd();
 };
 RetType : Type															{
     vector<Basictype*> vec{$1};
@@ -85,6 +95,7 @@ Statement : LBRACE {
 Statement : Type ID SC 													{
     vector<Basictype*> vec{$1,$2};
     handler.handleRule(15,vec);
+    cb_handler.emitVariableDecl($1,$2);
 };
 Statement : Type ID ASSIGN Exp SC										{
     vector<Basictype*> vec{$1,$2,$4};

@@ -30,6 +30,14 @@ string &Basictype::getType() { return type; }
 
 void Basictype::setType(string type_set) { type = type_set; }
 
+vector<pair<int, BranchLabelIndex>> &Basictype::getTrueList() {
+    return truelist;
+}
+
+vector<pair<int, BranchLabelIndex>> &Basictype::getFalseList() {
+    return falselist;
+}
+
 Num::Num(const char *yytext)
         : Basictype(yytext), lexeme_value(std::stoi(string(yytext))) {
     this->setType("INT OR BYTE");

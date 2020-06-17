@@ -16,9 +16,10 @@ public :
     void emitPrintFunctions();
     void printLocalBuffer();
     void printGlobalBuffer();
-    void emitFunctionStart(const string& ret_type,const string& function_name,const vector<Basictype*>& args);
+    void emitFunctionStart(Basictype* type_str,Basictype* id,Basictype* args_container);
     void emitFunctionEnd();
-    void emitVariableDecl(string type_str,string variable_name);
+    void emitVariableDecl(Basictype* type,Basictype* id);
+    void ifStart(Basictype* exp);
 };
 
 

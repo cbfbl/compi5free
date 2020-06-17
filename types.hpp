@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "bp.hpp"
 
 using std::cout;
 using std::endl;
@@ -16,6 +17,8 @@ class Basictype {
     int global_offset;
     int local_offset;
     string type;
+    vector<pair<int,BranchLabelIndex>> falselist;
+    vector<pair<int,BranchLabelIndex>> truelist;
 
 public:
     Basictype();
@@ -35,6 +38,10 @@ public:
     string &getType();
 
     void setType(string type_set);
+
+    vector<pair<int,BranchLabelIndex>>& getTrueList();
+
+    vector<pair<int,BranchLabelIndex>>& getFalseList();
 };
 
 class Num : public Basictype {

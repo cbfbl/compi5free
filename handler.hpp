@@ -135,7 +135,6 @@ public:
 
     void checkDefined(Basictype *id);
 
-    void declArgs(Basictype* ret_type,Basictype* id,Basictype *args);
 };
 
 #endif

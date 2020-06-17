@@ -25,8 +25,9 @@ CodeBufferHandler::CodeBufferHandler() : cb_inst(CodeBuffer::instance())  {
 
 }
 
-void CodeBufferHandler::emitFunctionStart(const string& ret_type,const string& function_name,const vector<Basictype*>& args) {
-    string s = "define " + typeConvert(ret_type) + " @" + function_name + "(";
+void CodeBufferHandler::emitFunctionStart(Basictype* ret_type,Basictype* id,Basictype* args_container) {
+    vector<Basictype*> args = ((Container*)args_container)->getVariables();
+    string s = "define " + typeConvert(ret_type->getType()) + " @" + id->getLexeme() + "(";
     for (int i=0;i<args.size();i++){
         s+=typeConvert(args[i]->getType())+" "+args[i]->getLexeme();
         if (i!=args.size()-1){
@@ -43,7 +44,7 @@ void CodeBufferHandler::emitFunctionEnd(){
 
 string CodeBufferHandler::typeConvert(const string& type_str) {
     if (type_str == "INT" || type_str == "BYTE"){
-        return "i8";
+        return "i32";
     }
     if (type_str == "BOOL"){
         return "i1";
@@ -53,9 +54,14 @@ string CodeBufferHandler::typeConvert(const string& type_str) {
     }
 }
 
-void CodeBufferHandler::emitVariableDecl(string type_str,string variable_name) {
+void CodeBufferHandler::emitVariableDecl(Basictype* type,Basictype* id) {
     string s = "";
-    s += "%" + variable_name + " = add i32 0, 0";
+    s += "%" + id->getLexeme() + " = add " + typeConvert(type->getType()) + " 0, 0";
     cb_inst.emit(s);
+}
+
+void CodeBufferHandler::ifStart(Basictype *exp) {
+    string lb = cb_inst.genLabel();
+    cb_inst.bpatch(exp->getTrueList(),lb);
 }
 

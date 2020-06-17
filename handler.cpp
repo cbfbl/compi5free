@@ -132,7 +132,6 @@ void Handler::insertPrintFunctions() {
     printi->setFunctionType(printi_type);
     symbol_table.insertItem(print);
     symbol_table.insertItem(printi);
-    cb_handler.emitPrintFunctions();
 }
 
 void Handler::removeScope() {
@@ -176,8 +175,6 @@ void Handler::finalize() {
         exit(0);
     }
     removeScope();
-    cb_handler.printGlobalBuffer();
-    cb_handler.printLocalBuffer();
 }
 
 // rule 4
@@ -207,7 +204,6 @@ void Handler::handleFunctionDeclartion(Basictype *ret_type, Basictype *id,
     func->setFunctionType(func_type);
     removeScope();
     symbol_table.insertItem(func);
-    cb_handler.emitFunctionEnd();
 }
 
 // rule 5
@@ -262,7 +258,6 @@ void Handler::handleStatmentTypeId(Basictype *type, Basictype *id) {
     id->setType(type->getType());
     symbol_table.insertItem(id);
     offset_stack.increaseOffset();
-    cb_handler.emitVariableDecl(type->getType(),id->getLexeme());
 }
 
 // rule 16
@@ -583,10 +578,6 @@ bool Handler::isMain(Basictype *ret_type, Basictype *id, Basictype *args) {
         return false;
     }
     return true;
-}
-
-void Handler::declArgs(Basictype* ret_type,Basictype* id,Basictype *args) {
-    cb_handler.emitFunctionStart(ret_type->getType(),id->getLexeme(),((Container*)args)->getVariables());
 }
 
 
