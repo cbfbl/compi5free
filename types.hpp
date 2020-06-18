@@ -14,10 +14,10 @@ using std::vector;
 
 class Basictype {
     string lexeme;
+    string reg;
     int global_offset;
     int local_offset;
     string type;
-    string reg;
     vector<pair<int,BranchLabelIndex>> falselist;
     vector<pair<int,BranchLabelIndex>> truelist;
 
@@ -47,6 +47,10 @@ public:
     void mergeList(bool which_list,vector<pair<int,BranchLabelIndex>>& lst);
 
     void makeList(bool which_list,pair<int,BranchLabelIndex> item);
+
+    const string& getReg();
+
+    void setReg(string new_reg);
 };
 
 class Num : public Basictype {

@@ -72,8 +72,8 @@ void CodeBufferHandler::elseStart(Basictype *exp) {
 
 void CodeBufferHandler::expReleq(Basictype *ret, Basictype *exp_l,
                                     Basictype* op,Basictype *exp_r) {
-    string s = "if %" + exp_l->getLexeme() + opConvert(op->getLexeme()) +" %" + exp_r->getLexeme();
-    s += "goto label @, label @";
+    string s = "if %" + exp_l->getLexeme() + + " " + opConvert(op->getLexeme()) +" %" + exp_r->getLexeme();
+    s += " goto label @, label @";
     int ln = cb_inst.emit(s);
     ret->makeList(true,pair<int,BranchLabelIndex>(ln,FIRST));
     ret->makeList(false,pair<int,BranchLabelIndex>(ln,SECOND));

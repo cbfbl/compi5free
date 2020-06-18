@@ -115,7 +115,7 @@ Statement : RETURN Exp SC												{
 };
 Statement : IFSTART %prec THEN					                        {handler.handleRule(21,vector<Basictype*>());};
 Statement : IFSTART ELSE {
-    // cb_handler.elseStart($1);
+    cb_handler.elseStart($1);
     handler.insertScope();
 } Statement			    {
     handler.removeScope();
@@ -225,12 +225,12 @@ Exp : Exp RELOP Exp														{
 Exp : Exp RELEQ Exp														{
     vector<Basictype*> vec{$1,$3};
     $$=handler.handleRule(48,vec);
-    // cb_Handler.expReleq($$,$1,$3);
+    cb_handler.expReleq($$,$1,$2,$3);
 };
 IFSTART : IF LPAREN Exp {
     vector<Basictype*> vec{$3};
     $$ = handler.handleRule(49,vec);
-    //code_handler.ifStart($3);
+    cb_handler.ifStart($3);
     handler.insertScope();
 } RPAREN Statement {
     handler.removeScope();

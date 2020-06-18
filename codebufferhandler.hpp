@@ -6,6 +6,7 @@
 #include <string>
 #include "bp.hpp"
 #include "types.hpp"
+#include "regmanager.hpp"
 
 
 class CodeBufferHandler {

@@ -1,6 +1,6 @@
 #include "types.hpp"
 
-Basictype::Basictype(const char *yytext) : lexeme(yytext) {
+Basictype::Basictype(const char *yytext) : lexeme(yytext), reg("&") {
     if (lexeme == "int") {
         setType("INT");
     } else if (lexeme == "bool") {
@@ -55,6 +55,14 @@ void Basictype::makeList(bool which_list, pair<int, BranchLabelIndex> item) {
     else {
         falselist = CodeBuffer::makelist(item);
     }
+}
+
+const string &Basictype::getReg() {
+    return reg;
+}
+
+void Basictype::setReg(string new_reg) {
+    reg = new_reg;
 }
 
 Num::Num(const char *yytext)
