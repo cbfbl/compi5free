@@ -11,8 +11,12 @@
 
 class CodeBufferHandler {
     CodeBuffer& cb_inst;
+    regmanager reg_manager;
     string typeConvert(const string& type_str);
     string opConvert(const string& op_str);
+    string binConvert(const string& op_str);
+    string emitSxt(const string& reg);
+    string emitTrunc(const string& reg);
 public :
     CodeBufferHandler();
     void emitPrintFunctions();
@@ -24,6 +28,9 @@ public :
     void ifStart(Basictype* exp);
     void elseStart(Basictype* exp);
     void expReleq(Basictype* ret,Basictype* exp_l,Basictype* op,Basictype* exp_r);
+    void expBinop(Basictype* ret,Basictype* exp_l,Basictype* op,Basictype* exp_r);
+    void expNum(Basictype* num);
+    void expNumB(Basictype* num);
 };
 
 
