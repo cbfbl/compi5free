@@ -44,7 +44,7 @@ public:
 
     vector<pair<int,BranchLabelIndex>>& getFalseList();
 
-    void mergeList(bool which_list,vector<pair<int,BranchLabelIndex>>& lst);
+    void mergeList(bool which_list,const vector<pair<int,BranchLabelIndex>>& lst);
 
     void makeList(bool which_list,pair<int,BranchLabelIndex> item);
 
@@ -115,6 +115,13 @@ public:
 class String : public Basictype {
 public:
     String(const char *yytext);
+};
+
+class Label : public Basictype {
+    string label;
+public:
+    Label(const string lbl);
+    string getLabel();
 };
 
 #define YYSTYPE Basictype*

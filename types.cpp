@@ -38,7 +38,7 @@ vector<pair<int, BranchLabelIndex>> &Basictype::getFalseList() {
     return falselist;
 }
 
-void Basictype::mergeList(bool which_list,vector<pair<int,BranchLabelIndex>>& lst) {
+void Basictype::mergeList(bool which_list,const vector<pair<int,BranchLabelIndex>>& lst) {
     if (which_list){
         truelist = CodeBuffer::merge(truelist,lst);
     }
@@ -123,4 +123,10 @@ string Function::getRetType() { return ret_type; }
 
 String::String(const char *yytext) : Basictype(yytext) {
     this->setType("STRING");
+}
+
+Label::Label(const string lbl) : label(lbl) {}
+
+string Label::getLabel() {
+    return label;
 }
