@@ -63,7 +63,7 @@ string CodeBufferHandler::typeConvert(const string& type_str) {
 }
 
 void CodeBufferHandler::emitVariableDecl(Basictype* type,Basictype* id) {
-    storeRegToLocal("0",id->getGlobalOffset());
+    storeRegToLocal(type->getType(),"0",id->getGlobalOffset());
 }
 
 void CodeBufferHandler::ifStart(Basictype *exp) {
@@ -78,9 +78,11 @@ void CodeBufferHandler::elseStart(Basictype *exp) {
 
 void CodeBufferHandler::expRel(Basictype *ret, Basictype *exp_l,
                                     Basictype* op,Basictype *exp_r) {
+    string reg_l = getReg(exp_l);
+    string rel_r = getReg(exp_r);
     string reg = reg_manager.getNextReg();
     string action = relConvert(op->getLexeme());
-    string s1 = reg +  " = icmp " +  action + " i32 " + exp_l->getReg() +", " + exp_r->getReg();
+    string s1 = reg +  " = icmp " +  action + " i32 " + reg_l +", " + reg_l;
     cb_inst.emit(s1);
     string s2 = "br i1 " + reg +  ", label @, label @";
     int ln = cb_inst.emit(s2);
@@ -113,26 +115,26 @@ string CodeBufferHandler::relConvert(const string& op_str){
 void
 CodeBufferHandler::expBinop(Basictype* ret,Basictype *exp_l, Basictype *op, Basictype *exp_r) {
     string div_add = "";
+    string s = "";
+    string reg = "";
     if (op->getLexeme()=="/"){
         handleDiv(exp_r);
         div_add = (ret->getType()=="INT" ? "s" : "u");
     }
-    string s = "";
-    string reg = "";
-    string reg_l = exp_l->getReg();
-    string reg_r = exp_r->getReg();
+    string reg_l = getReg(exp_l);
+    string reg_r = getReg(exp_r);
     if (exp_l->getType() == "BYTE"){
-        reg_l = emitSxt(reg_l);
+        reg_l = emitSxt(reg_l,8,32);
     }
     if (exp_r->getType() == "BYTE"){
-        reg_r = emitSxt(reg_r);
+        reg_r = emitSxt(reg_r,8,32);
     }
     string type = " " + typeConvert(ret->getType()) + " ";
     reg = reg_manager.getNextReg();
     s += reg + " = " + div_add + binConvert(op->getLexeme()) + type  + reg_l + ", " + reg_r;
     cb_inst.emit(s);
     if (ret->getType() == "BYTE"){
-        reg = emitTrunc(reg);
+        reg = emitTrunc(reg,32,8);
     }
     ret->setReg(reg);
 }
@@ -161,22 +163,26 @@ void CodeBufferHandler::expNumB(Basictype *num) {
     num->setReg(num->getLexeme());
 }
 
-string CodeBufferHandler::emitSxt(const string &reg) {
+string CodeBufferHandler::emitSxt(const string &reg,int from_bytes,int to_bytes) {
     string out_reg = reg_manager.getNextReg();
-    string s = out_reg + " = sext i8 " + reg + " to i32" ;
+    string from_str = "i"+std::to_string(from_bytes);
+    string to_str = "i"+std::to_string(to_bytes);
+    string s = out_reg + " = sext " + from_str + " " + reg + " to " + to_str;
     cb_inst.emit(s);
     return out_reg;
 }
 
-string CodeBufferHandler::emitTrunc(const string &reg) {
+string CodeBufferHandler::emitTrunc(const string &reg,int from_bytes,int to_bytes) {
     string out_reg = reg_manager.getNextReg();
-    string s = out_reg + " = trunc i32 " + reg + " to i8";
+    string from_str = "i"+std::to_string(from_bytes);
+    string to_str = "i"+std::to_string(to_bytes);
+    string s = out_reg + " = trunc " + from_str + " " + reg + " to " + to_str;
     cb_inst.emit(s);
     return out_reg;
 }
 
 void CodeBufferHandler::handleDiv(Basictype *exp_r) {
-    string reg = exp_r->getReg();
+    string reg = getReg(exp_r);
     string chk_reg = reg_manager.getNextReg();
     string s1 = chk_reg + " = icmp eq "+ typeConvert(exp_r->getType())+ " 0, " + reg ;
     string s2 = "br i1 " + chk_reg + " label @,label @";
@@ -236,18 +242,48 @@ void CodeBufferHandler::allocateStack() {
     cb_inst.emit("%stack = alloca [ 50 x i32 ] ");
 }
 
-string CodeBufferHandler::loadLocalToReg(int offset) {
+string CodeBufferHandler::loadLocalToReg(const string& reg_type,int offset) {
     string reg = reg_manager.getNextReg();
-    string s = reg + " = " + "getelementptr [50 x i32], [50 x i32]* %stack, i32 0, " + std::to_string(offset);
-    cb_inst.emit(s);
     string out_reg = reg_manager.getNextReg();
-    cb_inst.emit("load i32, i32* "+reg);
+    string s = reg + " = " + "getelementptr [50 x i32], [50 x i32]* %stack, i32 0, i32 " + std::to_string(offset);
+    cb_inst.emit(s);
+    cb_inst.emit(out_reg + " = load i32, i32* "+reg);
+    if (reg_type == "BYTE"){
+        out_reg = emitTrunc(out_reg,32,8);
+    }
+    else if (reg_type == "BOOL"){
+        out_reg = emitTrunc(out_reg,32,1);
+    }
     return out_reg;
 }
 
-void CodeBufferHandler::storeRegToLocal(const string& reg,int offset) {
+void CodeBufferHandler::storeRegToLocal(const string& reg_type,const string& reg,int offset) {
+    string out_reg = reg;
+    if (reg_type == "BYTE"){
+        out_reg = emitSxt(reg,8,32);
+    }
+    else if (reg_type == "BOOL"){
+        out_reg = emitSxt(reg,1,32);
+    }
     string var_reg = reg_manager.getNextReg();
     string s = var_reg + " = " + "getelementptr [50 x i32], [50 x i32]* %stack, i32 0, i32 " + std::to_string(offset);
     cb_inst.emit(s);
-    cb_inst.emit("store i32 " + reg + ", i32* " + var_reg);
+    cb_inst.emit("store i32 " + out_reg + ", i32* " + var_reg);
+}
+
+void CodeBufferHandler::emitVariableDeclExp(Basictype* type,Basictype* id,Basictype* exp) {
+    string reg = getReg(exp);
+    storeRegToLocal(exp->getType(),reg,id->getGlobalOffset());
+}
+
+string CodeBufferHandler::getReg(Basictype *basic_type) {
+    string reg = basic_type->getReg();
+    if (reg == "&"){
+        reg = loadLocalToReg(basic_type->getType(),basic_type->getGlobalOffset());
+    }
+    return reg;
+}
+
+void CodeBufferHandler::idAssignExp(Basictype *id, Basictype *exp) {
+    storeRegToLocal(exp->getType(),getReg(exp),id->getGlobalOffset());
 }

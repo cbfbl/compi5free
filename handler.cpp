@@ -284,7 +284,7 @@ Basictype *Handler::handleIdAssignExp(Basictype *id, Basictype *exp) {
     if (id_item->getType() == "FUNC") {
         output::errorUndef(yylineno, id->getLexeme());
         exit(0);
-    } else if (!assignmentIsLegal(id->getType(), exp->getType())) {
+    } else if (!assignmentIsLegal(id_item->getType(), exp->getType())) {
         output::errorMismatch(yylineno);
         exit(0);
     }
@@ -453,6 +453,8 @@ Basictype *Handler::handleId(Basictype *id) {
     } else {
         ret_type->setType(id_type->getType());
     }
+    ret_type->setGlobalOffset(id_type->getGlobalOffset());
+    ret_type->setLocalOffset(id_type->getLocalOffset());
     return ret_type;
 }
 

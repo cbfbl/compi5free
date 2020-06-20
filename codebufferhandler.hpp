@@ -15,12 +15,13 @@ class CodeBufferHandler {
     string typeConvert(const string& type_str);
     string relConvert(const string& op_str);
     string binConvert(const string& op_str);
-    string emitSxt(const string& reg);
-    string emitTrunc(const string& reg);
+    string emitSxt(const string& reg,int from_bytes,int to_bytes);
+    string emitTrunc(const string& reg,int from_bytes,int to_bytes);
     void handleDiv(Basictype* exp_r);
     void allocateStack();
-    string loadLocalToReg(int offset);
-    void storeRegToLocal(const string& reg,int offset);
+    string loadLocalToReg(const string& reg_type,int offset);
+    void storeRegToLocal(const string& reg_type,const string& reg,int offset);
+    string getReg(Basictype* basic_type);
 public :
     CodeBufferHandler();
     string newLabel();
@@ -43,6 +44,8 @@ public :
     void expOrStart(Basictype* exp_l);
     void expOr(Basictype* ret,Basictype* exp_l,Basictype* m,Basictype* exp_r);
     void createBr(bool which_list,Basictype* ret);
+    void emitVariableDeclExp(Basictype* type,Basictype* id,Basictype* exp);
+    void idAssignExp(Basictype* id,Basictype* exp);
 };
 
 
