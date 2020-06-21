@@ -287,3 +287,15 @@ string CodeBufferHandler::getReg(Basictype *basic_type) {
 void CodeBufferHandler::idAssignExp(Basictype *id, Basictype *exp) {
     storeRegToLocal(exp->getType(),getReg(exp),id->getGlobalOffset());
 }
+
+void CodeBufferHandler::expString(Basictype *ret) {
+    // @.int_specifier = global [4 x i8] c"%d\0A\00"
+    string lexeme = ret->getLexeme();
+    string str_len = std::to_string(ret->getLexeme().length());
+    string reg = reg_manager.getNextGlobal();
+    string new_str = lexeme.substr(0,lexeme.length()-1);
+    string s = reg + " = global ["+str_len;
+    s+= " x i8] c"+new_str+R"(\0A\00")";
+    ret->setReg(reg);
+    cb_inst.emitGlobal(s);
+}

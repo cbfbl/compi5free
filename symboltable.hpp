@@ -27,6 +27,11 @@ public:
     vector<Basictype *> getLastScopeData();
 
     Basictype *getItemById(string id);
+
+    void removeItem(const string& id);
+
+    pair<int,int> getItemLocation(const string& id);
+
 };
 
 #endif

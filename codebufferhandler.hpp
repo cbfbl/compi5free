@@ -46,6 +46,7 @@ public :
     void createBr(bool which_list,Basictype* ret);
     void emitVariableDeclExp(Basictype* type,Basictype* id,Basictype* exp);
     void idAssignExp(Basictype* id,Basictype* exp);
+    void expString(Basictype* ret);
 };
 
 

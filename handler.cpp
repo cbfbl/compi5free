@@ -135,11 +135,14 @@ void Handler::insertPrintFunctions() {
 }
 
 void Handler::removeScope() {
-    /*
     output::endScope();
     vector<Basictype *> last_scope = symbol_table.getLastScopeData();
     for (Basictype *basic_p : last_scope) {
         if (basic_p->getType() == "FUNC") {
+            int item_scope = symbol_table.getItemLocation(basic_p->getLexeme()).first;
+            if (item_scope != 0){
+                continue;
+            }
             output::printID(basic_p->getLexeme(), basic_p->getGlobalOffset(),
                             ((Function *) basic_p)->getFunctionType());
         } else {
@@ -147,7 +150,6 @@ void Handler::removeScope() {
                             basic_p->getType());
         }
     }
-     */
     symbol_table.removeScope();
     offset_stack.removeLastItem();
 }
@@ -180,30 +182,9 @@ void Handler::finalize() {
 // rule 4
 void Handler::handleFunctionDeclartion(Basictype *ret_type, Basictype *id,
                                        Basictype *args) {
-    if (symbol_table.exists(((Id *) id)->getName())) {
-        output::errorDef(yylineno, id->getLexeme());
-    }
     setExpectedRetType("NONE");
-    if (isMain(ret_type, id, args)) {
-        was_main_defined = true;
-    }
-    vector<string> params_types;
-    Function *func = new Function(((Id *) id)->getName());
-    func->setType("FUNC");
-    func->setRetType(ret_type->getType());
-    func->setGlobalOffset(0);
-    int i = -1;
-    for (Basictype *basic_type : ((Container *) args)->getVariables()) {
-        basic_type->setGlobalOffset(i);
-        func->addVariable(basic_type);
-        i--;
-        params_types.push_back(basic_type->getType());
-    }
-    string func_type =
-            output::makeFunctionType(ret_type->getType(), params_types);
-    func->setFunctionType(func_type);
     removeScope();
-    symbol_table.insertItem(func);
+    handleFunctionStart(ret_type,id,args);
 }
 
 // rule 5
@@ -306,7 +287,6 @@ void Handler::handleReturnWithType(Basictype *ret_type) {
         output::errorMismatch(yylineno);
         exit(0);
     }
-    setExpectedRetType("VOID");
 }
 
 // rule 23
@@ -580,6 +560,32 @@ bool Handler::isMain(Basictype *ret_type, Basictype *id, Basictype *args) {
         return false;
     }
     return true;
+}
+
+void Handler::handleFunctionStart(Basictype *ret_type, Basictype *id,
+                                        Basictype *args) {
+    if (symbol_table.exists(((Id *) id)->getName())) {
+        output::errorDef(yylineno, id->getLexeme());
+    }
+    if (isMain(ret_type, id, args)) {
+        was_main_defined = true;
+    }
+    vector<string> params_types;
+    Function *func = new Function(((Id *) id)->getName());
+    func->setType("FUNC");
+    func->setRetType(ret_type->getType());
+    func->setGlobalOffset(0);
+    int i = -1;
+    for (Basictype *basic_type : ((Container *) args)->getVariables()) {
+        basic_type->setGlobalOffset(i);
+        func->addVariable(basic_type);
+        i--;
+        params_types.push_back(basic_type->getType());
+    }
+    string func_type =
+            output::makeFunctionType(ret_type->getType(), params_types);
+    func->setFunctionType(func_type);
+    symbol_table.insertItem(func);
 }
 
 

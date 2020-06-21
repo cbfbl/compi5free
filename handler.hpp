@@ -109,7 +109,6 @@ class Handler {
 
     Basictype *handleCallToExp(Basictype *call);
 
-
     void finalize();
 
     bool isNum(const string &type);
@@ -134,6 +133,8 @@ public:
     void removeScope();
 
     void checkDefined(Basictype *id);
+
+    void handleFunctionStart(Basictype* ret_type,Basictype* id,Basictype* args);
 
 };
 

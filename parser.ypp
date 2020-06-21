@@ -38,8 +38,8 @@ Program	: {
     cb_handler.emitPrintFunctions();
 } Funcs {
     handler.handleRule(1,vector<Basictype*>());
-    cb_handler.printGlobalBuffer();
-    cb_handler.printLocalBuffer();
+    //cb_handler.printGlobalBuffer();
+    //cb_handler.printLocalBuffer();
 };
 Funcs : /*epsilon*/ {
     handler.handleRule(2,vector<Basictype*>());
@@ -52,6 +52,7 @@ FuncDecl : RetType ID LPAREN {
     handler.setExpectedRetType($1->getType());
     handler.checkDefined($2);
 } Formals {
+    handler.handleFunctionStart($1,$2,$5);
     cb_handler.emitFunctionStart($1,$2,$5);
 } RPAREN LBRACE Statements RBRACE 	{
     vector<Basictype*> vec{$1,$2,$5};
@@ -204,6 +205,7 @@ Exp : NUM B																{
 Exp : STRING															{
     vector<Basictype*> vec{$1};
     $$=handler.handleRule(41,vec);
+    cb_handler.expString($$);
 };
 Exp : TRUE																{
     vector<Basictype*> vec{$1};
@@ -242,7 +244,7 @@ Exp : Exp RELEQ Exp														{
 };
 IFSTART : IF LPAREN Exp {
     vector<Basictype*> vec{$3};
-    $$ = handler.handleRule(49,vec);
+    $$=handler.handleRule(49,vec);
     cb_handler.ifStart($3);
     handler.insertScope();
 } RPAREN Statement {
@@ -251,7 +253,7 @@ IFSTART : IF LPAREN Exp {
 }
 WHILESTART : WHILE LPAREN Exp {
     vector<Basictype*> vec{$3};
-    handler.handleRule(50,vec);
+    $$=handler.handleRule(50,vec);
     handler.insertScope();
 } RPAREN Statement {
     handler.removeScope();

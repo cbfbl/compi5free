@@ -38,3 +38,13 @@ Basictype *SymbolTable::getItemById(string id) {
 int SymbolTable::getLastScopeSize() { return scopes.back().size(); }
 
 vector<Basictype *> SymbolTable::getLastScopeData() { return scopes.back(); }
+
+void SymbolTable::removeItem(const string& id) {
+    id_map.erase(id);
+}
+
+pair<int,int> SymbolTable::getItemLocation(const string &id) {
+    auto &location_vec = id_map[id];
+    pair<int,int> pair_ret = pair<int,int>(location_vec[0],location_vec[1]);
+    return pair_ret;
+}

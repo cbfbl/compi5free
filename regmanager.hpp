@@ -9,9 +9,11 @@ using std::string;
 
 class regmanager {
     int next_reg;
+    int next_global;
 public :
     regmanager();
     string getNextReg();
+    string getNextGlobal();
 };
 
 
