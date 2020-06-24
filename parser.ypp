@@ -38,8 +38,8 @@ Program	: {
     cb_handler.emitPrintFunctions();
 } Funcs {
     handler.handleRule(1,vector<Basictype*>());
-    //cb_handler.printGlobalBuffer();
-    //cb_handler.printLocalBuffer();
+    cb_handler.printGlobalBuffer();
+    cb_handler.printLocalBuffer();
 };
 Funcs : /*epsilon*/ {
     handler.handleRule(2,vector<Basictype*>());
@@ -111,10 +111,12 @@ Statement : ID ASSIGN Exp SC 											{
 Statement : Call SC 													{handler.handleRule(18,vector<Basictype*>());};
 Statement : RETURN SC													{
     handler.handleRule(19,vector<Basictype*>());
+    cb_handler.emitRet();
 };
 Statement : RETURN Exp SC												{
     vector<Basictype*> vec{$2};
     handler.handleRule(20,vec);
+    cb_handler.emitRet($2);
 };
 Statement : IFSTART %prec THEN	{
     handler.handleRule(21,vector<Basictype*>());
@@ -131,24 +133,29 @@ Statement : WHILESTART %prec THEN				                        {
 Statement : WHILESTART ELSE {
     handler.insertScope();
     handler.handleRule(24,vector<Basictype*>());
-} Statement			{
+} Statement	 {
     handler.removeScope();
+    cb_handler.whileEnd();
 };
 Statement : BREAK SC 													{
     vector<Basictype*> vec{$1};
     handler.handleRule(25,vec);
+    cb_handler.stmBreak();
 };
 Statement : CONTINUE SC 												{
     vector<Basictype*> vec{$1};
     handler.handleRule(26,vec);
+    cb_handler.stmContinue();
 };
 Call : ID LPAREN ExpList RPAREN											{
     vector<Basictype*> vec{$1,$3};
     $$=handler.handleRule(27,vec);
+    cb_handler.emitCall($$,$1,$3);
 };
 Call : ID LPAREN RPAREN													{
     vector<Basictype*> vec{$1};
     $$=handler.handleRule(28,vec);
+    cb_handler.emitCall($$,$1);
 };
 ExpList : Exp															{
     vector<Basictype*> vec{$1};
@@ -187,6 +194,7 @@ Exp : Exp BINOPL Exp													{
 Exp : ID																{
     vector<Basictype*> vec{$1};
     $$=handler.handleRule(37,vec);
+    cb_handler.expId($$);
 };
 Exp : Call																{
     vector<Basictype*> vec{$1};
@@ -251,15 +259,20 @@ IFSTART : IF LPAREN Exp {
     handler.removeScope();
     cb_handler.ifEnd($3);
 }
-WHILESTART : WHILE LPAREN Exp {
+WHILESTART : WHILE LPAREN Exp M {
     vector<Basictype*> vec{$3};
     $$=handler.handleRule(50,vec);
+    cb_handler.whileStart($3,$4);
     handler.insertScope();
-} RPAREN Statement {
+} RPAREN Statement N {
+    cb_handler.whileMiddle($8,$4,$3);
     handler.removeScope();
 }
 
 M : {$$ = new Label(cb_handler.newLabel());}
+N : {
+   $$ = new Goto(cb_handler.emitGoto());
+}
 %%
 
 int main()

@@ -130,3 +130,11 @@ Label::Label(const string lbl) : label(lbl) {}
 string Label::getLabel() {
     return label;
 }
+
+Goto::Goto(const int &loc) : goto_location(loc) {
+
+}
+
+int Goto::getGotoLoc() {
+    return goto_location;
+}

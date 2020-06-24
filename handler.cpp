@@ -130,11 +130,14 @@ void Handler::insertPrintFunctions() {
     string printi_type = output::makeFunctionType("VOID", printi_params);
     print->setFunctionType(print_type);
     printi->setFunctionType(printi_type);
+    print->setRetType("VOID");
+    printi->setRetType("VOID");
     symbol_table.insertItem(print);
     symbol_table.insertItem(printi);
 }
 
 void Handler::removeScope() {
+    /*
     output::endScope();
     vector<Basictype *> last_scope = symbol_table.getLastScopeData();
     for (Basictype *basic_p : last_scope) {
@@ -150,6 +153,7 @@ void Handler::removeScope() {
                             basic_p->getType());
         }
     }
+    */
     symbol_table.removeScope();
     offset_stack.removeLastItem();
 }
@@ -435,6 +439,7 @@ Basictype *Handler::handleId(Basictype *id) {
     }
     ret_type->setGlobalOffset(id_type->getGlobalOffset());
     ret_type->setLocalOffset(id_type->getLocalOffset());
+    ret_type->setType(id_type->getType());
     return ret_type;
 }
 
@@ -466,11 +471,13 @@ Basictype *Handler::handleString(Basictype *string) {
 
 // rule THE_ANSWER
 Basictype *Handler::handleTrue(Basictype *bool_true) {
+    bool_true->setReg("true");
     return bool_true;
 }
 
 // rule 43
 Basictype *Handler::handleFalse(Basictype *bool_false) {
+    bool_false->setReg("false");
     return bool_false;
 }
 

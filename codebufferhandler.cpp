@@ -36,7 +36,7 @@ void CodeBufferHandler::emitFunctionStart(Basictype* ret_type,Basictype* id,Basi
     vector<Basictype*> args = ((Container*)args_container)->getVariables();
     string s = "define " + typeConvert(ret_type->getType()) + " @" + id->getLexeme() + "(";
     for (int i=0;i<args.size();i++){
-        s+=typeConvert(args[i]->getType())+" "+args[i]->getLexeme();
+        s+=typeConvert(args[i]->getType());
         if (i!=args.size()-1){
             s+=", ";
         }
@@ -59,6 +59,9 @@ string CodeBufferHandler::typeConvert(const string& type_str) {
     }
     if (type_str=="VOID"){
         return "void";
+    }
+    if (type_str=="STRING"){
+        return "i8*";
     }
 }
 
@@ -139,7 +142,7 @@ CodeBufferHandler::expBinop(Basictype* ret,Basictype *exp_l, Basictype *op, Basi
     ret->setReg(reg);
 }
 
-string CodeBufferHandler::binConvert(const string &op_str) {
+string CodeBufferHandler::binConvert(const string &op_str) { //TODO unsigned and signed?
     if (op_str=="+"){
         return "add";
     }
@@ -185,13 +188,12 @@ void CodeBufferHandler::handleDiv(Basictype *exp_r) {
     string reg = getReg(exp_r);
     string chk_reg = reg_manager.getNextReg();
     string s1 = chk_reg + " = icmp eq "+ typeConvert(exp_r->getType())+ " 0, " + reg ;
-    string s2 = "br i1 " + chk_reg + " label @,label @";
+    string s2 = "br i1 " + chk_reg + ", label @,label @";
     cb_inst.emit(s1);
     int bp_loc1 = cb_inst.emit(s2);
     string lb = cb_inst.genLabel();
     cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc1,FIRST)),lb);
-    // TODO call print and exit
-    cb_inst.emit("PRINT ERROR AND EXIT");
+    divError(lb);
     lb = cb_inst.genLabel();
     cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc1,SECOND)),lb);
 }
@@ -234,7 +236,7 @@ void CodeBufferHandler::ifEnd(Basictype *exp) {
 }
 
 void CodeBufferHandler::createBr(bool which_list,Basictype* ret) {
-    int bp_loc = cb_inst.emit("br @");
+    int bp_loc = cb_inst.emit("br label @");
     ret->mergeList(which_list,CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)));
 }
 
@@ -272,14 +274,27 @@ void CodeBufferHandler::storeRegToLocal(const string& reg_type,const string& reg
 }
 
 void CodeBufferHandler::emitVariableDeclExp(Basictype* type,Basictype* id,Basictype* exp) {
-    string reg = getReg(exp);
+    string reg = "";
+    if (type->getType()=="BOOL"){
+        reg = handleBoolHelper(exp);
+        storeRegToLocal("INT",reg,id->getGlobalOffset());
+        return;
+    }
+    reg = getReg(exp);
     storeRegToLocal(exp->getType(),reg,id->getGlobalOffset());
 }
 
 string CodeBufferHandler::getReg(Basictype *basic_type) {
     string reg = basic_type->getReg();
-    if (reg == "&"){
+    if (reg == "&" && basic_type->getGlobalOffset() >= 0){
         reg = loadLocalToReg(basic_type->getType(),basic_type->getGlobalOffset());
+    }
+    else if (reg == "&" && basic_type->getGlobalOffset() < 0){
+        reg = "%" + std::to_string(-1*(basic_type->getGlobalOffset() + 1));
+    }
+    else if (basic_type->getType()=="STRING"){
+        string str_size = "[" + std::to_string(basic_type->getLexeme().length()-1)+" x i8]";
+        reg = "getelementptr("+str_size+" , "+str_size+"* "+reg+", i32 0, i32 0)";
     }
     return reg;
 }
@@ -291,11 +306,147 @@ void CodeBufferHandler::idAssignExp(Basictype *id, Basictype *exp) {
 void CodeBufferHandler::expString(Basictype *ret) {
     // @.int_specifier = global [4 x i8] c"%d\0A\00"
     string lexeme = ret->getLexeme();
-    string str_len = std::to_string(ret->getLexeme().length());
+    string str_len = std::to_string(ret->getLexeme().length()-1);
     string reg = reg_manager.getNextGlobal();
     string new_str = lexeme.substr(0,lexeme.length()-1);
     string s = reg + " = global ["+str_len;
-    s+= " x i8] c"+new_str+R"(\0A\00")";
+    s+= " x i8] c"+new_str+R"(\00")";
     ret->setReg(reg);
     cb_inst.emitGlobal(s);
 }
+
+string
+CodeBufferHandler::emitPhi(vector<string> values, vector<string> labels) {
+    //  %indvar = phi i32 [ 0, %LoopHeader ], [ %nextindvar, %Loop ]
+    string reg = reg_manager.getNextReg();
+    string s = reg + " = phi i32 ";
+    for (int i = 0 ; i < values.size() ; i++){
+        s+= "[ " + values[i] +", " + labels[i] +" ]";
+        if (i != values.size() - 1){
+            s+= ", ";
+        }
+    }
+    cb_inst.emit(s);
+    return reg;
+}
+
+string CodeBufferHandler::handleBoolHelper(Basictype* exp) {
+    // br i1 <cond>, label <iftrue>, label <iffalse>
+    string true_label = cb_inst.genLabel();
+    int bp_loc1 = cb_inst.emit("br label @");
+    string false_label = cb_inst.genLabel();
+    int bp_loc2 = cb_inst.emit("br label @");
+    string jmp_at_end = cb_inst.genLabel();
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc1,FIRST)),jmp_at_end);
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc2,FIRST)),jmp_at_end);
+    cb_inst.bpatch(exp->getTrueList(),true_label);
+    cb_inst.bpatch(exp->getFalseList(),false_label);
+    vector<string> true_false;
+    true_false.emplace_back("1");
+    true_false.emplace_back("0");
+    vector<string> labels_vec;
+    labels_vec.emplace_back("%"+true_label);
+    labels_vec.emplace_back("%"+false_label);
+    return emitPhi(true_false,labels_vec);
+}
+
+void CodeBufferHandler::expId(Basictype *ret) {
+    if (ret->getType()=="BOOL"){
+        int stack_helper_loc = cb_inst.emit("br i1 "+getReg(ret)+", label @, label @");
+        ret->mergeList(true,CodeBuffer::makelist(pair<int,BranchLabelIndex>(stack_helper_loc,FIRST)));
+        ret->mergeList(false,CodeBuffer::makelist(pair<int,BranchLabelIndex>(stack_helper_loc,SECOND)));
+    }
+}
+
+void CodeBufferHandler::whileStart(Basictype *exp,Basictype* m_while_start) {
+    break_positions.push_back(vector<int>());
+    string loop_label = ((Label*)m_while_start)->getLabel();
+    while_labels.push_back(loop_label);
+    cb_inst.bpatch(exp->getTrueList(),loop_label);
+}
+
+void CodeBufferHandler::whileEnd() {
+    breakControl();
+    break_positions.pop_back();
+    while_labels.pop_back();
+}
+
+void CodeBufferHandler::breakControl() {
+    vector<int> break_branches = break_positions.back();
+    string lb = cb_inst.genLabel();
+    for (int break_loc : break_branches){
+        cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(break_loc,FIRST)),lb);
+    }
+    break_branches.pop_back();
+}
+
+void CodeBufferHandler::whileMiddle(Basictype * n_goto,Basictype* m_while_start,Basictype* exp) {
+    int bp_loc = ((Goto*)n_goto)->getGotoLoc();
+    string while_start = ((Label*)m_while_start)->getLabel();
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),while_start);
+    string lb = cb_inst.genLabel();
+    cb_inst.bpatch(exp->getFalseList(),lb);
+}
+
+int CodeBufferHandler::emitGoto() {
+    int bp_loc = cb_inst.emit("br label @");
+    return bp_loc;
+}
+
+void CodeBufferHandler::stmBreak() {
+    int bp_loc = cb_inst.emit("br label @");
+    break_positions.back().push_back(bp_loc);
+}
+
+void CodeBufferHandler::stmContinue() {
+    int bp_loc = cb_inst.emit("br label @");
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),while_labels.back());
+}
+
+void CodeBufferHandler::emitRet(Basictype *exp) {
+    string s = "ret ";
+    if (exp == NULL){
+        s += "void";
+    }
+    else {
+        s += getReg(exp);
+    }
+    cb_inst.emit(s);
+}
+
+void CodeBufferHandler::emitCall(Basictype* ret,Basictype *id, Basictype *explist) {
+    string s1 = "";
+    string ret_reg = "";
+    string s2 = "call " + typeConvert(ret->getType())+ " @" + id->getLexeme()+"(";
+    if (explist != NULL) {
+        vector<Basictype *> args = ((Container *) explist)->getVariables();
+        vector<pair<string, string>> type_and_reg_vec;
+        for (Basictype *arg : args) {
+            type_and_reg_vec.push_back(
+                    pair<string, string>(typeConvert(arg->getType()), getReg(arg)));
+        }
+        for (int i = 0; i < type_and_reg_vec.size(); i++) {
+            s2 += type_and_reg_vec[i].first + " " + type_and_reg_vec[i].second;
+            if (i != type_and_reg_vec.size() - 1) {
+                s2 += ", ";
+            }
+        }
+
+    }
+    if (ret->getType() != "VOID"){
+        ret_reg = reg_manager.getNextReg();
+        s1 += ret_reg+ " = ";
+        ret->setReg(ret_reg);
+    }
+    s1 += s2 + ")";
+    cb_inst.emit(s1);
+}
+
+void CodeBufferHandler::divError(string lb) {
+    string err_str = R"(c"Error division by zero\00")";
+    cb_inst.emitGlobal("@.div_error = global [23 x i8] "+err_str);
+    cb_inst.emit("call void @print(i8* getelementptr([23 x i8] , [23 x i8]* @.div_error, i32 0, i32 0))");
+    cb_inst.emit("call void @exit(i32 0)");
+    cb_inst.emit("br label %"+lb);
+}
+

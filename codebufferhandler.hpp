@@ -11,7 +11,9 @@
 
 class CodeBufferHandler {
     CodeBuffer& cb_inst;
-    regmanager reg_manager;
+    RegManager reg_manager;
+    vector<vector<int>> break_positions;
+    vector<string> while_labels;
     string typeConvert(const string& type_str);
     string relConvert(const string& op_str);
     string binConvert(const string& op_str);
@@ -22,6 +24,9 @@ class CodeBufferHandler {
     string loadLocalToReg(const string& reg_type,int offset);
     void storeRegToLocal(const string& reg_type,const string& reg,int offset);
     string getReg(Basictype* basic_type);
+    string emitPhi(vector<string> values,vector<string> labels);
+    string handleBoolHelper(Basictype* exp);
+    void divError(string lb);
 public :
     CodeBufferHandler();
     string newLabel();
@@ -47,6 +52,16 @@ public :
     void emitVariableDeclExp(Basictype* type,Basictype* id,Basictype* exp);
     void idAssignExp(Basictype* id,Basictype* exp);
     void expString(Basictype* ret);
+    void expId(Basictype* ret);
+    void whileStart(Basictype* exp,Basictype* m_while_start);
+    void whileMiddle(Basictype* n_goto,Basictype* m_while_Start,Basictype* exp);
+    void whileEnd();
+    void breakControl();
+    int emitGoto();
+    void stmBreak();
+    void stmContinue();
+    void emitRet(Basictype* exp=NULL);
+    void emitCall(Basictype* ret,Basictype* id,Basictype* explist=NULL);
 };
 
 

@@ -2,15 +2,15 @@
 
 #include "regmanager.hpp"
 
-regmanager::regmanager() :next_reg(0) {}
+RegManager::RegManager() :next_reg(0) {}
 
-string regmanager::getNextReg() {
+string RegManager::getNextReg() {
     string reg = "%t"+std::to_string(next_reg);
     next_reg++;
     return reg;
 }
 
-string regmanager::getNextGlobal() {
+string RegManager::getNextGlobal() {
     string global = "@.g"+std::to_string(next_global);
     next_global++;
     return global;

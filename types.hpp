@@ -124,6 +124,13 @@ public:
     string getLabel();
 };
 
+class Goto : public Basictype {
+    int goto_location;
+public:
+    Goto(const int& loc);
+    int getGotoLoc();
+};
+
 #define YYSTYPE Basictype*
 
 #endif

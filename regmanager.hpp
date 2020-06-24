@@ -7,11 +7,11 @@
 
 using std::string;
 
-class regmanager {
+class RegManager {
     int next_reg;
     int next_global;
 public :
-    regmanager();
+    RegManager();
     string getNextReg();
     string getNextGlobal();
 };
