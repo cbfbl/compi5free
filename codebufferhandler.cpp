@@ -46,13 +46,19 @@ void CodeBufferHandler::emitFunctionStart(Basictype* ret_type,Basictype* id,Basi
     allocateStack();
 }
 
-void CodeBufferHandler::emitFunctionEnd(){
+void CodeBufferHandler::emitFunctionEnd(Basictype* ret_type){
+    if (ret_type->getType()=="VOID"){
+        cb_inst.emit("ret void");
+    }
     cb_inst.emit("}");
 }
 
 string CodeBufferHandler::typeConvert(const string& type_str) {
-    if (type_str == "INT" || type_str == "BYTE"){
+    if (type_str == "INT"){
         return "i32";
+    }
+    if (type_str=="BYTE"){
+        return "i8";
     }
     if (type_str == "BOOL"){
         return "i1";
@@ -79,13 +85,51 @@ void CodeBufferHandler::elseStart(Basictype *exp) {
     cb_inst.bpatch(exp->getFalseList(),lb);
 }
 
+void CodeBufferHandler::ifMiddle(Basictype* ret,Basictype *exp) {
+    //int bp_loc = cb_inst.emit("br label @");
+    //ret->mergeList(false,CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)));
+    ret->mergeList(false,exp->getFalseList());
+}
+
+void CodeBufferHandler::ifEnd(Basictype* bp_var) {
+    int bp_loc = cb_inst.emit("br label @");
+    string lb = cb_inst.genLabel();
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),lb);
+    cb_inst.bpatch(bp_var->getFalseList(),lb);
+}
+
+void CodeBufferHandler::ifEnd() {
+    int bp_loc = cb_inst.emit("br label @");
+    string lb = cb_inst.genLabel();
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),lb);
+}
+
+void CodeBufferHandler::ifElse(Basictype *if_start,Basictype* m) {
+    string lb = ((Label*)m)->getLabel();
+    //if_start->mergeList(false,CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)));
+    cb_inst.bpatch(if_start->getFalseList(),lb);
+}
+
+void CodeBufferHandler::ifElseEnd(Basictype *bp_var) {
+    int bp_loc = cb_inst.emit("br label @");
+    string lb = cb_inst.genLabel();
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),lb);
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(((Goto*)bp_var)->getGotoLoc(),FIRST)),lb);
+}
+
 void CodeBufferHandler::expRel(Basictype *ret, Basictype *exp_l,
                                     Basictype* op,Basictype *exp_r) {
     string reg_l = getReg(exp_l);
-    string rel_r = getReg(exp_r);
+    string reg_r = getReg(exp_r);
+    if (exp_l->getType()=="BYTE"){
+        reg_l = emitSxt(reg_l,8,32);
+    }
+    if (exp_r->getType()=="BYTE"){
+        reg_r = emitSxt(reg_r,8,32);
+    }
     string reg = reg_manager.getNextReg();
     string action = relConvert(op->getLexeme());
-    string s1 = reg +  " = icmp " +  action + " i32 " + reg_l +", " + reg_l;
+    string s1 = reg +  " = icmp " +  action + " i32 " + reg_l +", " + reg_r;
     cb_inst.emit(s1);
     string s2 = "br i1 " + reg +  ", label @, label @";
     int ln = cb_inst.emit(s2);
@@ -132,7 +176,7 @@ CodeBufferHandler::expBinop(Basictype* ret,Basictype *exp_l, Basictype *op, Basi
     if (exp_r->getType() == "BYTE"){
         reg_r = emitSxt(reg_r,8,32);
     }
-    string type = " " + typeConvert(ret->getType()) + " ";
+    string type = " i32 ";
     reg = reg_manager.getNextReg();
     s += reg + " = " + div_add + binConvert(op->getLexeme()) + type  + reg_l + ", " + reg_r;
     cb_inst.emit(s);
@@ -229,10 +273,6 @@ CodeBufferHandler::expOr(Basictype *ret, Basictype *exp_l,Basictype* m, Basictyp
 string CodeBufferHandler::newLabel() {
     string lb = cb_inst.genLabel();
     return lb;
-}
-
-void CodeBufferHandler::ifEnd(Basictype *exp) {
-    cb_inst.bpatch(exp->getFalseList(), cb_inst.genLabel());
 }
 
 void CodeBufferHandler::createBr(bool which_list,Basictype* ret) {
@@ -365,28 +405,56 @@ void CodeBufferHandler::whileStart(Basictype *exp,Basictype* m_while_start) {
     cb_inst.bpatch(exp->getTrueList(),loop_label);
 }
 
-void CodeBufferHandler::whileEnd() {
-    breakControl();
+void CodeBufferHandler::whileEnd(Basictype* to_bp) {
+    string lb = breakControl();
+    cb_inst.bpatch(to_bp->getFalseList(),lb);
     break_positions.pop_back();
     while_labels.pop_back();
 }
 
-void CodeBufferHandler::breakControl() {
+Basictype* CodeBufferHandler::emitMWhile() {
+    int bp_loc = cb_inst.emit("br label @");
+    Label* ret = new Label(newLabel());
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),ret->getLabel());
+    return ret;
+}
+
+void CodeBufferHandler::whileEnd(Basictype* while_start,Basictype *n_goto) {
+    int bp_loc = ((Goto*)n_goto)->getGotoLoc();
+    n_goto->mergeList(false,CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)));
+    //string lb = cb_inst.genLabel();
+    //cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),lb);
+    //cb_inst.bpatch(while_start->getFalseList(),lb);
+    whileEnd(n_goto);
+}
+
+void CodeBufferHandler::whileElseEnd(Basictype *while_start,Basictype* m) {
+    string lb = ((Label*)m)->getLabel();
+    cb_inst.bpatch(while_start->getFalseList(),lb);
+}
+
+void CodeBufferHandler::whileMiddle(Basictype* ret,Basictype * n_goto,Basictype* exp,Basictype* before_exp) {
+    int bp_loc = ((Goto*)n_goto)->getGotoLoc();
+    string while_start = ((Label*)before_exp)->getLabel();
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),while_start);
+    ret->mergeList(false,exp->getFalseList());
+    //string lb = cb_inst.genLabel();
+    //cb_inst.bpatch(exp->getFalseList(),lb);
+
+}
+
+string CodeBufferHandler::breakControl() {
     vector<int> break_branches = break_positions.back();
+    int bp_loc = cb_inst.emit("br label @");
     string lb = cb_inst.genLabel();
     for (int break_loc : break_branches){
         cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(break_loc,FIRST)),lb);
     }
+    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),lb);
     break_branches.pop_back();
+    return lb;
 }
 
-void CodeBufferHandler::whileMiddle(Basictype * n_goto,Basictype* m_while_start,Basictype* exp) {
-    int bp_loc = ((Goto*)n_goto)->getGotoLoc();
-    string while_start = ((Label*)m_while_start)->getLabel();
-    cb_inst.bpatch(CodeBuffer::makelist(pair<int,BranchLabelIndex>(bp_loc,FIRST)),while_start);
-    string lb = cb_inst.genLabel();
-    cb_inst.bpatch(exp->getFalseList(),lb);
-}
 
 int CodeBufferHandler::emitGoto() {
     int bp_loc = cb_inst.emit("br label @");
@@ -409,7 +477,7 @@ void CodeBufferHandler::emitRet(Basictype *exp) {
         s += "void";
     }
     else {
-        s += getReg(exp);
+        s += typeConvert(exp->getType()) + " " + getReg(exp);
     }
     cb_inst.emit(s);
 }
@@ -418,12 +486,18 @@ void CodeBufferHandler::emitCall(Basictype* ret,Basictype *id, Basictype *explis
     string s1 = "";
     string ret_reg = "";
     string s2 = "call " + typeConvert(ret->getType())+ " @" + id->getLexeme()+"(";
+    vector<Basictype*> simple_bool_vec;
     if (explist != NULL) {
         vector<Basictype *> args = ((Container *) explist)->getVariables();
         vector<pair<string, string>> type_and_reg_vec;
         for (Basictype *arg : args) {
+            string llvm_type = typeConvert(arg->getType());
+            string llvm_reg = getReg(arg);
             type_and_reg_vec.push_back(
-                    pair<string, string>(typeConvert(arg->getType()), getReg(arg)));
+                    pair<string, string>(llvm_type, llvm_reg));
+            if (llvm_reg=="true" || llvm_reg=="false"){
+                simple_bool_vec.push_back(arg);
+            }
         }
         for (int i = 0; i < type_and_reg_vec.size(); i++) {
             s2 += type_and_reg_vec[i].first + " " + type_and_reg_vec[i].second;
@@ -439,6 +513,18 @@ void CodeBufferHandler::emitCall(Basictype* ret,Basictype *id, Basictype *explis
         ret->setReg(ret_reg);
     }
     s1 += s2 + ")";
+
+    if (!simple_bool_vec.empty()) {
+        string lb = cb_inst.genLabel();
+        for (Basictype* arg : simple_bool_vec){
+            if (getReg(arg)=="true"){
+                cb_inst.bpatch(arg->getTrueList(),lb);
+            }
+            else {
+                cb_inst.bpatch(arg->getFalseList(),lb);
+            }
+        }
+    }
     cb_inst.emit(s1);
 }
 
@@ -449,4 +535,11 @@ void CodeBufferHandler::divError(string lb) {
     cb_inst.emit("call void @exit(i32 0)");
     cb_inst.emit("br label %"+lb);
 }
+
+
+
+
+
+
+
 
